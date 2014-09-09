@@ -1,18 +1,35 @@
+// Basic https requests
 var https = require('https');
 var qs = require('querystring');
-
+// Promise library and functional programming utility
 var Q = require('q');
 var _ = require('lodash');
 
-var helpers = require('./helpers.js');
-var foursquareUtils = require('./foursquareUtils');
+// Generic helper for data streaming
+var helpers = {
 
-var User = require('../api/users/userModel.js');
+  httpsGet: function (queryPath) {
+    var deferred = Q.defer();
 
+    https.get(queryPath, function (res) {
+      var data = '';
+      res.on('data', function(chunk) {
+        data += chunk;
+      });
+      res.on('end', function(){
+        deferred.resolve(data);
+      })
+    }).on('error', function(err) {
+      deferred.reject(err);
+    });
+
+    return deferred.promise;
+  }
+};
+
+
+// FACEBOOK HELPER METHODS
 var utils = {};
-
-//FACEBOOK HELPER METHODS
-
 utils.exchangeFBAccessToken = function (fbToken) {
   var deferred = Q.defer();
 
@@ -153,37 +170,37 @@ utils.getFBStatuses = function (user) {
   return deferred.promise;
 };
 
-utils.handleUpdateObject = function (update) {
-  console.log("update: " + JSON.stringify(update));
-  var deferred = Q.defer();
+// utils.handleUpdateObject = function (update) {
+//   console.log("update: " + JSON.stringify(update));
+//   var deferred = Q.defer();
 
-  var fbUserID = {facebookID: update.uid};
-  var fbPostCreatedTime = update.time - 1;
-  var user;
+//   var fbUserID = {facebookID: update.uid};
+//   var fbPostCreatedTime = update.time - 1;
+//   var user;
 
-  User.find(fbUserID)
-    .then(function (userNode) {
-      user = userNode;
-      return utils.makeRequestForFeedItem(user, fbPostCreatedTime);
-    })
-    .then(function (fbResponse) {
-      var feedItems = fbResponse.data;
-      console.log("dis be ma response data: " + JSON.stringify(feedItems));
+//   User.find(fbUserID)
+//     .then(function (userNode) {
+//       user = userNode;
+//       return utils.makeRequestForFeedItem(user, fbPostCreatedTime);
+//     })
+//     .then(function (fbResponse) {
+//       var feedItems = fbResponse.data;
+//       console.log("dis be ma response data: " + JSON.stringify(feedItems));
 
-      return utils.parseFBData(user, feedItems);
-    })
-    .then(function (parsedCheckins) {
-      deferred.resolve({
-        user: user,
-        checkins: parsedCheckins
-      });
-    })
-    .catch(function (e) {
-      deferred.reject(e);
-    });
+//       return utils.parseFBData(user, feedItems);
+//     })
+//     .then(function (parsedCheckins) {
+//       deferred.resolve({
+//         user: user,
+//         checkins: parsedCheckins
+//       });
+//     })
+//     .catch(function (e) {
+//       deferred.reject(e);
+//     });
 
-  return deferred.promise;
-};
+//   return deferred.promise;
+// };
 
 utils.makeRequestForFeedItem = function (user, postCreatedTime) {
   var deferred = Q.defer();
