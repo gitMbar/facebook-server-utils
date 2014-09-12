@@ -19,6 +19,9 @@ facebookServerUtils.exchangeFBAcessToken(12345,12345,12345)
 ##Requests to Facebook
 
 ####exchangeFBAccessToken(facebookToken, facebookAppID, facebookAppSecret)
+######Purpose
+Exchange a token acquired by client side Facebook OAuth for a long term access token which will persist after a user ends their session.
+
 ######Input Values
 * *facebookToken* is the temporary token that a specific user will send to the server after being authorized on the client side.
 * *facebookAppID* is the unique id of your app.
