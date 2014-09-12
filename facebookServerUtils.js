@@ -52,10 +52,19 @@ utils.exchangeFBAccessToken = function (fbToken) {
   return deferred.promise;
 };
 
-utils.getFBProfilePicture = function (userID) {
+// Takes in an object with userID and pictureSize parameters
+utils.getFBProfilePicture = function (data) {
   var deferred = Q.defer();
 
-  var queryPath = 'https://graph.facebook.com/' + userID + '/picture?redirect=false&type=large';
+  var userID = data.userID;
+  var size = data.pictureSize;
+
+  var queryPath = [
+    'https://graph.facebook.com/',
+    userID,
+    '/picture?redirect=false&type=',
+    size
+    ].join('');
 
   helpers.httpsGet(queryPath)
     .then(function (data) {
@@ -68,11 +77,12 @@ utils.getFBProfilePicture = function (userID) {
   return deferred.promise;
 }
 
+// Takes as input a user object with facebookID and facebookToken parameters
 utils.getFBFriends = function (user) {
   var deferred = Q.defer();
 
-  var fbID = user.getProperty('facebookID');
-  var fbToken = user.getProperty('fbToken');
+  var fbID = user.facebookID;
+  var fbToken = user.facebookToken;
   
   var query = {
     access_token: fbToken
