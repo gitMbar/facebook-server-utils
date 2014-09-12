@@ -191,47 +191,55 @@ facebookServerUtils.getFBStatuses = function (user) {
   return deferred.promise;
 };
 
-// facebookServerUtils.handleUpdateObject = function (update) {
-//   console.log("update: " + JSON.stringify(update));
-//   var deferred = Q.defer();
+// LIVE FACEBOOK UPDATES
+// These functions handle POST requests from Facebook
 
-//   var fbUserID = {facebookID: update.uid};
-//   var fbPostCreatedTime = update.time - 1;
-//   var user;
+// First, we handle a GET request from Facebook checking if we exist
+facebookServerUtils.facebookHubChallenge = function (req, res) {
+  res.status(200).send(req.query['hub.challenge']);
+};
 
-//   User.find(fbUserID)
-//     .then(function (userNode) {
-//       user = userNode;
-//       return facebookServerUtils.makeRequestForFeedItem(user, fbPostCreatedTime);
-//     })
-//     .then(function (fbResponse) {
-//       var feedItems = fbResponse.data;
-//       console.log("dis be ma response data: " + JSON.stringify(feedItems));
+// Then, handle a POST request to the same route with a user defined function
+// Which must end with a res.status(200).end() or equivalent
+// Finally, somewhere in the user-defined function, call handleFBPost
+facebookServerUtils.handleFBPost = function (updateArray, facebookToken) {
+  var posts = _.map(updateArray, function(update) {
+    return facebookUtils.handleUpdateObject(update, facebookToken);
+  });
 
-//       return facebookServerUtils.parseFBData(user, feedItems);
-//     })
-//     .then(function (parsedCheckins) {
-//       deferred.resolve({
-//         user: user,
-//         checkins: parsedCheckins
-//       });
-//     })
-//     .catch(function (e) {
-//       deferred.reject(e);
-//     });
+  return Q.all(posts)
+}
 
-//   return deferred.promise;
-// };
+// Resolves with response from Facebook
+facebookServerUtils.handleUpdateObject = function (update, facebookToken) {
+  var deferred = Q.defer();
+
+  var fbPostCreatedTime = update.time - 1;
+  var user = {
+    facebookID: update.uid,
+    facebookToken: facebookToken
+  }
+
+  facebookServerUtils.makeRequestForFeedItem(user, fbPostCreatedTime)
+    .then(function (fbResponse) {
+      deferred.resolve(fbResponse.data);
+    })
+    .catch(function (e) {
+      deferred.reject(e);
+    });
+
+  return deferred.promise;
+};
 
 facebookServerUtils.makeRequestForFeedItem = function (user, postCreatedTime) {
   var deferred = Q.defer();
 
-  var fbID = user.getProperty('facebookID');
-  var fbToken = user.getProperty('fbToken');
+  var fbID = user.facebookID;
+  var fbToken = user.facebookToken;
 
   var query = {
-    access_token: fbToken,
-    since: postCreatedTime,
+    'access_token': fbToken,
+    'since': postCreatedTime,
     'with': 'location'
   };
 
@@ -239,7 +247,6 @@ facebookServerUtils.makeRequestForFeedItem = function (user, postCreatedTime) {
 
   helpers.httpsGet(queryPath)
     .then(function (data) {
-      console.log("feed data: ", data);
       deferred.resolve(JSON.parse(data));
     })
     .catch(function (e) {
