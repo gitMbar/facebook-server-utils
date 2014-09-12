@@ -12,6 +12,10 @@ facebookServerUtils.exchangeFBAcessToken(12345,12345,12345)
 .then(function(data){ console.log(data) };
 ````
 
+##Contents
+
+* exchangeFBAccessToken
+
 ##Requests to Facebook
 
 ####exchangeFBAccessToken(facebookToken, facebookAppID, facebookAppSecret)
