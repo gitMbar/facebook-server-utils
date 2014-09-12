@@ -29,8 +29,9 @@ var helpers = {
 
 
 // FACEBOOK HELPER METHODS
-var utils = {};
-utils.exchangeFBAccessToken = function (fbToken) {
+// All methods return promises which are resolved using .then syntax
+var facebookServerUtils = {};
+facebookServerUtils.exchangeFBAccessToken = function (fbToken) {
   var deferred = Q.defer();
 
   var query = {
@@ -53,7 +54,7 @@ utils.exchangeFBAccessToken = function (fbToken) {
 };
 
 // Takes in an object with userID and pictureSize parameters
-utils.getFBProfilePicture = function (data) {
+facebookServerUtils.getFBProfilePicture = function (data) {
   var deferred = Q.defer();
 
   var userID = data.userID;
@@ -78,7 +79,7 @@ utils.getFBProfilePicture = function (data) {
 }
 
 // Takes as input a user object with facebookID and facebookToken parameters
-utils.getFBFriends = function (user) {
+facebookServerUtils.getFBFriends = function (user) {
   var deferred = Q.defer();
 
   var fbID = user.facebookID;
@@ -101,26 +102,11 @@ utils.getFBFriends = function (user) {
   return deferred.promise;
 };
 
-utils.getFBTaggedPosts = function (user) {
-  var deferred = Q.defer();
-
-  var fbID = user.getProperty('facebookID');
-  var fbToken = user.getProperty('fbToken');
-
-  var query = {
-    access_token: fbToken
-  };
-
-  var queryPath = 'https://graph.facebook.com/'+fbID+'/tagged?' + qs.stringify(query);
-
-  var taggedPostsContainer = [];
-
-  deferred.resolve(utils.makeFBPaginatedRequest(queryPath, taggedPostsContainer));
-
-  return deferred.promise;
-};
-
-utils.makeFBPaginatedRequest = function (queryPath, container) {
+// Facebook only allows 25 results to be returned at a given time
+// Any request that might return more data will be returned with a .next field
+// Allowing a chain of requests for the full set of data
+// Container is passed recursively as an empty array and referenced from an outer function
+facebookServerUtils.makeFBPaginatedRequest = function (queryPath, container) {
   var deferred = Q.defer();
 
   helpers.httpsGet(queryPath)
@@ -132,7 +118,7 @@ utils.makeFBPaginatedRequest = function (queryPath, container) {
       if (! dataObj.paging) {
         deferred.resolve(_.flatten(container, true));
       } else {
-        deferred.resolve(utils.makeFBPaginatedRequest(dataObj.paging.next, container));
+        deferred.resolve(facebookServerUtils.makeFBPaginatedRequest(dataObj.paging.next, container));
       }
     })
     .catch(function (e) {
@@ -142,11 +128,34 @@ utils.makeFBPaginatedRequest = function (queryPath, container) {
   return deferred.promise;
 }
 
-utils.getFBPhotos = function (user) {
+// Takes as input a user object with facebookID and facebookToken parameters
+// Queries facebook graph API for tagged posts
+facebookServerUtils.getFBTaggedPosts = function (user) {
   var deferred = Q.defer();
 
-  var fbID = user.getProperty('facebookID');
-  var fbToken = user.getProperty('fbToken');
+  var fbID = user.facebookID;
+  var fbToken = user.facebookToken;
+
+  var query = {
+    access_token: fbToken
+  };
+
+  var queryPath = 'https://graph.facebook.com/'+fbID+'/tagged?' + qs.stringify(query);
+
+  var taggedPostsContainer = [];
+
+  deferred.resolve(facebookServerUtils.makeFBPaginatedRequest(queryPath, taggedPostsContainer));
+
+  return deferred.promise;
+};
+
+// Takes as input a user object with facebookID and facebookToken parameters
+// Queries Facebook API for a users photos
+facebookServerUtils.getFBPhotos = function (user) {
+  var deferred = Q.defer();
+
+  var fbID = user.facebookID;
+  var fbToken = user.facebookToken;
 
   var query = {
     access_token: fbToken
@@ -156,16 +165,18 @@ utils.getFBPhotos = function (user) {
 
   var photoContainer = [];
 
-  deferred.resolve(utils.makeFBPaginatedRequest(queryPath, photoContainer));
+  deferred.resolve(facebookServerUtils.makeFBPaginatedRequest(queryPath, photoContainer));
 
   return deferred.promise;
 };
 
-utils.getFBStatuses = function (user) {
+// Takes as input a user object with facebookID and facebookToken parameters
+// Queries Facebook API for the statuses a user has posted
+facebookServerUtils.getFBStatuses = function (user) {
   var deferred = Q.defer();
 
-  var fbID = user.getProperty('facebookID');
-  var fbToken = user.getProperty('fbToken');
+  var fbID = user.facebookID;
+  var fbToken = user.facebookToken;
 
   var query = {
     access_token: fbToken
@@ -175,12 +186,12 @@ utils.getFBStatuses = function (user) {
 
   var statusContainer = [];
 
-  deferred.resolve(utils.makeFBPaginatedRequest(queryPath, statusContainer));
+  deferred.resolve(facebookServerUtils.makeFBPaginatedRequest(queryPath, statusContainer));
 
   return deferred.promise;
 };
 
-// utils.handleUpdateObject = function (update) {
+// facebookServerUtils.handleUpdateObject = function (update) {
 //   console.log("update: " + JSON.stringify(update));
 //   var deferred = Q.defer();
 
@@ -191,13 +202,13 @@ utils.getFBStatuses = function (user) {
 //   User.find(fbUserID)
 //     .then(function (userNode) {
 //       user = userNode;
-//       return utils.makeRequestForFeedItem(user, fbPostCreatedTime);
+//       return facebookServerUtils.makeRequestForFeedItem(user, fbPostCreatedTime);
 //     })
 //     .then(function (fbResponse) {
 //       var feedItems = fbResponse.data;
 //       console.log("dis be ma response data: " + JSON.stringify(feedItems));
 
-//       return utils.parseFBData(user, feedItems);
+//       return facebookServerUtils.parseFBData(user, feedItems);
 //     })
 //     .then(function (parsedCheckins) {
 //       deferred.resolve({
@@ -212,7 +223,7 @@ utils.getFBStatuses = function (user) {
 //   return deferred.promise;
 // };
 
-utils.makeRequestForFeedItem = function (user, postCreatedTime) {
+facebookServerUtils.makeRequestForFeedItem = function (user, postCreatedTime) {
   var deferred = Q.defer();
 
   var fbID = user.getProperty('facebookID');
@@ -238,4 +249,4 @@ utils.makeRequestForFeedItem = function (user, postCreatedTime) {
   return deferred.promise;
 };
 
-module.exports = utils;
+module.exports = facebookServerUtils;
